@@ -19,11 +19,14 @@ If you are using this simulator (or parts of it) for a publication, please consi
 
 ## Running simulations
 Please have your Python environment ready with NVIDIA Sionna v0.11, as the code was developed and tested for this version.
-Then, simply run the simulation scripts located in the `./scr` folder.
-The upper parts contain a lot of simulation parameters, which can be modified at will.
 
-The simulation scripts will frist train the corresponding signal processing models for all loss functions under test,
-and then run a performance benchmark. At the end, it plots and saves the bit error rate and block error rate curves.
+The simulation scripts are located in `./scr`. The upper parts contain multiple simulation parameters, which can be modified at will.
+After the model definition part, the scripts first train the corresponding signal processing models for all loss functions under test,
+and then run a performance benchmark. At the end, the bit error rate and block error rate curves are plotted and saved to files.
+
+Before running the simulations, please create the following directories:
+- `./data/weights` where the trained model weights are saved
+- `./results` for the simulation results (BER and BLER curves), which are saved as `.csv` and `.pickle` files
 
 ## Version history
 
