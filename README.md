@@ -5,7 +5,7 @@ You are using simple simulation scripts that implement the two experiments in th
 “Bit Error and Block Error Rate Training for ML-Assisted
 Communication,” arXiv:2210.14103, 2022*, available at https://arxiv.org/abs/2210.14103
 
-The simulations are implemented with [NVIDIA Sionna](https://github.com/NVlabs/sionna) Release v0.11 and own extensions.
+The simulations are implemented with [NVIDIA Sionna](https://github.com/NVlabs/sionna) Release v0.12.1 and own extensions.
 
 Parts of the code are also based on
 - *R. Wiesmayr, C. Dick, J. Hoydis, and C. Studer,
@@ -31,3 +31,6 @@ Before running the simulations, please create the following directories:
 ## Version history
 
 - Version 0.1: [wiesmayr@iis.ee.ethz.ch](wiesmayr@iis.ee.ethz.ch) - initial version for GitHub release
+- Version 0.2: [wiesmayr@iis.ee.ethz.ch](wiesmayr@iis.ee.ethz.ch) - updated simulations:
+  - Training on information bits
+  - Changed MIMO BS ULA antenna yaw angle to point to sector center 

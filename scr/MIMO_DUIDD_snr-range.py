@@ -21,7 +21,8 @@ import matplotlib.pyplot as plt
 from sionna.mapping import Constellation, Mapper
 from sionna.fec.ldpc import LDPC5GEncoder
 from sionna.utils import BinarySource, ebnodb2no, sim_ber, expand_to_rank
-from sionna.channel import RayleighBlockFading, OFDMChannel, gen_single_sector_topology
+from sionna.channel import RayleighBlockFading, OFDMChannel
+from source.modified_single_sector_topology_generation import gen_single_sector_topology
 
 from source.mmsePIC import sisoLowComplexityMfLmmseDetector, SisoMmsePicDetector
 from source.simulationFunctions import save_weights, load_weights, save_data, train_model
@@ -96,8 +97,6 @@ else:
 
 # OFDM Waveform Settings
 # 60kHz subcarrier spacing
-# subcarrier_spacing = 60e3
-# 30 kHz subcarrier spacing
 subcarrier_spacing = 60e3
 # Maximum resource blocks within the 100MHz n78 5G channel w/ 60MHz SC spacing
 num_resource_blocks = 135
@@ -276,16 +275,20 @@ class ChanEstBaseModel(Model):
         """Set new topology"""
         if channel_model_str in ["UMi", "UMa", "RMa"]:
             # sensible values according to 3GPP standard, no mobility by default
-            topology = gen_single_sector_topology(batch_size,
-                                                  n_ue, max_ut_velocity=max_ut_velocity,
-                                                  scenario=channel_model_str.lower())
-            self._channel_model.set_topology(*topology, los=LoS)
+            [ut_loc, bs_loc, ut_orientations, bs_orientation, ut_velocities, in_state] = \
+                gen_single_sector_topology(batch_size,
+                                           n_ue, max_ut_velocity=max_ut_velocity,
+                                           scenario=channel_model_str.lower())
+            if LoS is not None:
+                in_state = tf.math.logical_and(in_state, False)
+            self._channel_model.set_topology(ut_loc, bs_loc, ut_orientations, bs_orientation, ut_velocities, in_state,
+                                             los=LoS)
     def computeLoss(self, b, c, b_hat):
         # tf.print(b[0, 0, 0, 0])
         if self._training:
             cost = 0
             if 'BCE' in self._lossFun:
-                bce = tf.nn.sigmoid_cross_entropy_with_logits(c, b_hat)
+                bce = tf.nn.sigmoid_cross_entropy_with_logits(b, b_hat)
                 if 'LogSumExp' in self._lossFun:
                     if 'normalized' in self._lossFun:
                         x_max = tf.reduce_max(bce, axis=-1, keepdims=True)
@@ -326,15 +329,15 @@ class ChanEstBaseModel(Model):
                 else:
                     cost = bce
             elif 'SumLogProduct' in self._lossFun:
-                cost = - tf.reduce_sum(tf.math.log(0.5 - 0.5 * tf.tanh(-b_hat * (c - 0.5))), axis=-1)
+                cost = - tf.reduce_sum(tf.math.log(0.5 - 0.5 * tf.tanh(-b_hat * (b - 0.5))), axis=-1)
             elif 'Product' in self._lossFun:
                 # cost = 1 - tf.reduce_prod(1/(1+tf.exp(b_hat*(2*c-1))), axis=-1)
-                cost = 1 - tf.reduce_prod(0.5 - 0.5 * tf.tanh(-b_hat * (c - 0.5)), axis=-1)
+                cost = 1 - tf.reduce_prod(0.5 - 0.5 * tf.tanh(-b_hat * (b - 0.5)), axis=-1)
                 if 'Log' in self._lossFun:
                     cost = tf.math.log(tf.reduce_mean(cost))
             elif 'MSE' in self._lossFun:
                 p = 0.5*(1-tf.tanh(-b_hat/2.0))
-                cost = tf.reduce_mean(tf.pow(c-p, 2.0), axis=-1)
+                cost = tf.reduce_mean(tf.pow(b-p, 2.0), axis=-1)
                 # cost = tf.keras.losses.MSE(c, p)
             else:
                 raise NotImplementedError('Not implemented:' + self._lossFun)
@@ -370,7 +373,7 @@ class TwoIterMmsePicLdpcChanEstModel(ChanEstBaseModel):
                                                num_iter=int(num_bp_iter), stateful=True, trainable=False,
                                                trainDamping=training,  hard_out=False)
         self._LDPCDec1 = dampedLDPC5GDecoder(self._encoder, cn_type=ldpc_cn_update_func,
-                                               return_infobits=not (self._training),
+                                               return_infobits=True,
                                                num_iter=int(num_bp_iter), stateful=True, trainable=False,
                                                trainDamping=training,
                                                hard_out=not (self._training))
@@ -532,7 +535,7 @@ for i in range(len(keys)):
 plt.xlabel(r"$E_b/N_0$ (dB)")
 plt.ylabel("BLER")
 plt.grid(which="both")
-plt.ylim((1e-2, 1.0))
+plt.ylim((1e-3, 1.0))
 plt.legend()
 plt.tight_layout()
 plt.title(title+" BLER")
@@ -545,7 +548,7 @@ for i in range(len(keys)):
 plt.xlabel(r"$E_b/N_0$ (dB)")
 plt.ylabel("BER")
 plt.grid(which="both")
-plt.ylim((1e-3, 1.0))
+plt.ylim((1e-4, 1.0))
 plt.legend()
 plt.tight_layout()
 plt.title(title+" BLER")

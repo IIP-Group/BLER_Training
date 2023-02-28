@@ -96,7 +96,7 @@ r = 5.0/6.0  # rate 5/6
 k = 300  # number of information bits per codeword (292 is minimum for BG1)
 n = int(k/r)  # code length (most probably selects the largest 5G generator matrix
 
-model_weights_path = '../data/weights/' + case + "optical" + "_" + str(ebno_db_min) + "_" + str(ebno_db_max) + "_"
+model_weights_path = '../data/weights/' + case + "_" + str(ebno_db_min) + "_" + str(ebno_db_max) + "_"
 
 
 # Constellation 4-QAM
@@ -124,7 +124,7 @@ class BaseModel(Model):
         if self._training:
             cost = 0
             if 'BCE' in self._lossFun:
-                bce = tf.nn.sigmoid_cross_entropy_with_logits(c, b_hat)
+                bce = tf.nn.sigmoid_cross_entropy_with_logits(b, b_hat)
                 if 'LogSumExp' in self._lossFun:
                     if 'normalized' in self._lossFun:
                         x_max = tf.reduce_max(bce, axis=-1, keepdims=True)
@@ -165,15 +165,15 @@ class BaseModel(Model):
                 else:
                     cost = bce
             elif 'SumLogProduct' in self._lossFun:
-                cost = - tf.reduce_sum(tf.math.log(0.5 - 0.5 * tf.tanh(-b_hat * (c - 0.5))), axis=-1)
+                cost = - tf.reduce_sum(tf.math.log(0.5 - 0.5 * tf.tanh(-b_hat * (b - 0.5))), axis=-1)
             elif 'Product' in self._lossFun:
                 # cost = 1 - tf.reduce_prod(1/(1+tf.exp(b_hat*(2*c-1))), axis=-1)
-                cost = 1 - tf.reduce_prod(0.5 - 0.5 * tf.tanh(-b_hat * (c - 0.5)), axis=-1)
+                cost = 1 - tf.reduce_prod(0.5 - 0.5 * tf.tanh(-b_hat * (b - 0.5)), axis=-1)
                 if 'Log' in self._lossFun:
                     cost = tf.math.log(tf.reduce_mean(cost))
             elif 'MSE' in self._lossFun:
                 p = 0.5*(1-tf.tanh(-b_hat/2.0))
-                cost = tf.reduce_mean(tf.pow(c-p, 2.0), axis=-1)
+                cost = tf.reduce_mean(tf.pow(b-p, 2.0), axis=-1)
                 # cost = tf.keras.losses.MSE(c, p)
             else:
                 raise NotImplementedError('Not implemented:' + self._lossFun)
@@ -197,7 +197,7 @@ class AwgnModel(BaseModel):
         ######################################
         self._demapper = Demapper(demapping_method=demapping_method, constellation=constellation)
         self._LDPCDec0 = dampedLDPC5GDecoder(self._encoder, trainDamping=True, trainable=True,      # damped LDPC decoder is trainable
-                                       cn_type=ldpc_cn_update_func, return_infobits=not training,
+                                       cn_type=ldpc_cn_update_func, return_infobits=True,
                                        num_iter=int(num_bp_iter),
                                        hard_out=not training)
 
@@ -236,7 +236,8 @@ class AwgnModel(BaseModel):
 # Model for BCE pre training
 training_model_BCE = AwgnModel(training=True)
 
-loss_pretraining = train_model(training_model_BCE, ebno_db_min, ebno_db_max, num_pretraining_iterations, training_batch_size, return_loss=True)
+loss_pretraining = train_model(training_model_BCE, ebno_db_min, ebno_db_max, num_pretraining_iterations,
+                               training_batch_size, return_loss=True)
 
 loss_curves = {
     "loss_pretraining": loss_pretraining
@@ -253,7 +254,7 @@ for loss_fun in loss_fun_list:
                                                      num_training_epochs=num_snr_training_epochs,
                                                      num_iter_per_epoch=num_iter_per_epoch, return_loss=True)
         loss_curves[loss_fun] = loss_curve_bce.flatten()
-    else: # MSE loss requires pre-training with MSE
+    else:  # MSE loss requires pre-training with MSE
         training_model_mse = AwgnModel(training=True, loss_fun=loss_fun)
         loss_curve_bce = train_model(training_model_mse, ebno_db_min, ebno_db_max, num_pretraining_iterations,
                                      training_batch_size, return_loss=True)
@@ -302,6 +303,7 @@ save_data(title + "_BER", BER, path="../results/")
 
 keys= list(BLER.keys())
 keys.remove("snr_range")
+plt.figure(figsize=(10, 6))
 for i in range(len(keys)):
     loss_fun = keys[i]
     plt.semilogy(snr_range, BLER[loss_fun], 'o-', c=f'C'+str(i), label=loss_fun)
@@ -314,7 +316,7 @@ plt.tight_layout()
 plt.title(title+" BLER")
 plt.show()
 
-plt.figure() #figsize=(10, 6))
+plt.figure(figsize=(10, 6))
 for i in range(len(keys)):
     loss_fun = keys[i]
     plt.semilogy(snr_range, BER[loss_fun], 'o-', c=f'C'+str(i), label=loss_fun)
