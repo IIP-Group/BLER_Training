@@ -24,7 +24,7 @@ from source.simulationFunctions import save_weights, load_weights, save_data, tr
     train_model_deweighting_SNR
 
 # Simulation setup
-case = "awgn-chan_snr_deweighting_bg1-2k5training"
+case = "awgn-chan_snr_deweighting"
 
 num_ldpc_iter = 5   # only 5 LDPC iterations
 GPU_NUM = 0
@@ -64,13 +64,13 @@ ebno_db_max = 7
 stepsize = 0.25
 
 if DEBUG:
-    batch_size = int(1e1)
+    batch_size = int(1e2)
     num_iter = 2
     num_pretraining_iterations = 10
     num_BLER_training_iterations = 10
     num_iter_per_epoch = 5
     stepsize = 5
-    training_batch_size = int(2e0)
+    training_batch_size = int(5e1)
     tf.config.run_functions_eagerly(True)
     mi_stepsize = 0.25
     rb_used = 2

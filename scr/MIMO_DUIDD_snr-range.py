@@ -81,13 +81,13 @@ ebno_db_max = 10
 rb_used = 2
 stepsize = 1
 if DEBUG:
-    batch_size = int(1e1)
+    batch_size = int(1e2)
     num_iter = 2
     num_pretraining_iterations = 10
     num_BLER_training_iterations = 10
     num_iter_per_epoch = 5
     stepsize = 5
-    training_batch_size = int(2e0)
+    training_batch_size = int(5e1)
     tf.config.run_functions_eagerly(True)
     mi_stepsize = 0.25
     rb_used = 2

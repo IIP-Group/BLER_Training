@@ -3,7 +3,7 @@
 You are using simple simulation scripts that implement the two experiments in the paper
 *R. Wiesmayr, G. Marti, C. Dick, H. Song, and C. Studer
 “Bit Error and Block Error Rate Training for ML-Assisted
-Communication,” arXiv:2210.14103, 2022*, available at https://arxiv.org/abs/2210.14103
+Communication,” arXiv:2210.14103, Mar. 2023*, available at https://arxiv.org/abs/2210.14103
 
 The simulations are implemented with [NVIDIA Sionna](https://github.com/NVlabs/sionna) Release v0.12.1 and own extensions.
 
@@ -34,3 +34,5 @@ Before running the simulations, please create the following directories:
 - Version 0.2: [wiesmayr@iis.ee.ethz.ch](wiesmayr@iis.ee.ethz.ch) - updated simulations:
   - Training on information bits
   - Changed MIMO BS ULA antenna yaw angle to point to sector center 
+- Version 0.3: [wiesmayr@iis.ee.ethz.ch](wiesmayr@iis.ee.ethz.ch) - updated SNR deweighting algorithm:
+  - Sampling the SNR range only on a low number of points to avoid empty accumulated loss bins

@@ -226,7 +226,7 @@ class dampedLDPC5GDecoder(LDPC5GDecoder1):
 
     @property
     def beta(self):
-        """Alpha values for dampening."""
+        """Beta values for dampening."""
         return self._beta
 
 

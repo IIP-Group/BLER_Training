@@ -8,6 +8,7 @@ import numpy as np
 from datetime import datetime
 import pandas as pd
 import tensorflow as tf
+from matplotlib import pyplot as plt
 
 def save_data(sim_title, plot_data, sim_params=None, path="./fig/data/simulationResults/"):
     try:
@@ -73,22 +74,26 @@ def train_model(model, ebno_db_min, ebno_db_max, num_training_iterations, traini
     if return_loss:
         return loss_curve
 
-def train_model_deweighting_SNR(model, snr_dB_min, snr_dB_max, training_batch_size, num_training_epochs, num_iter_per_epoch, return_loss=False, regularization_epsilon=1e-4):
+def train_model_deweighting_SNR(model, snr_dB_min, snr_dB_max, training_batch_size, num_training_epochs,
+                                num_iter_per_epoch, num_points=5, return_loss=False, regularization_epsilon=1e-4,
+                                normalization_pt=2, plot=False):
     # Optimizer Adam used to apply gradients
     loss_curve = np.ndarray((num_training_epochs, num_iter_per_epoch))
     optimizer = tf.keras.optimizers.Adam()
-    deweighting_weights = tf.Variable(tf.ones((training_batch_size))/training_batch_size, trainable=False, dtype=tf.float32, name="deweighting weights")
-    ebno_db = tf.cast(tf.linspace(snr_dB_min, snr_dB_max, training_batch_size), dtype=tf.float32)
+    deweighting_weights = tf.Variable(tf.ones((num_points)), trainable=False, dtype=tf.float32, name="deweighting weights")
+    ebno_db = tf.cast(tf.linspace(snr_dB_min, snr_dB_max, num_points), dtype=tf.float32)
+    num_reps = int(training_batch_size/num_points)
+
     for i_e in range(num_training_epochs, ):
         sum_loss=0
-        print("Epoch {}/{}  Weights: \n".format(i_e, num_training_epochs) + str(deweighting_weights.numpy().transpose() ))
+        print("Epoch {}/{}  Weights: \n".format(i_e, num_training_epochs) + str(deweighting_weights.numpy().transpose()))
         for i_iter in range(num_iter_per_epoch):
             # Sampling a batch of SNRs
             # Forward pass
             with tf.GradientTape() as tape:
-                bce = model(training_batch_size, ebno_db)
+                bce = model(int(num_reps * num_points), tf.repeat(ebno_db, num_reps))
                 sum_loss = sum_loss + bce
-                loss_value = tf.reduce_sum(bce * deweighting_weights)
+                loss_value = tf.reduce_mean(bce * tf.repeat(deweighting_weights, num_reps))
             # Computing and applying gradients
             weights = model.trainable_weights
             # print(weights)
@@ -103,9 +108,20 @@ def train_model_deweighting_SNR(model, snr_dB_min, snr_dB_max, training_batch_si
                     # print(np.mean(np.abs(s[0])), np.mean(np.abs(s[1])))
                     print(s[0], s[1])
                 # print("Weight: %.4f Gradient: %.4f" % (weights[1].numpy(), grads[1].numpy()))
-        # Updating de-weighting weights at the end of each epoch
-        deweighting_weights.assign(1/(sum_loss + regularization_epsilon))
-        deweighting_weights.assign(deweighting_weights/tf.reduce_sum(deweighting_weights))
-        print(sum_loss)
+        sum_loss_pts = tf.reduce_sum(tf.reshape(sum_loss, [num_points, -1]), axis=1)
+
+        new_weights = sum_loss_pts[normalization_pt] / (sum_loss_pts + regularization_epsilon)
+
+        if plot:
+            plt.figure()
+            plt.semilogy(ebno_db, sum_loss_pts, '*-', label="accumulated_loss")
+            plt.semilogy(ebno_db, sum_loss_pts + regularization_epsilon, '*-', label="regularized accumulated_loss")
+            plt.semilogy(ebno_db, new_weights, '*-', label="new weights")
+            plt.xlabel("Eb/No")
+            plt.ylabel("loss")
+            plt.legend()
+            plt.show()
+
+        deweighting_weights.assign(new_weights)
     if return_loss:
         return loss_curve
